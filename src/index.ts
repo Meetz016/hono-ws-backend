@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { v4 as uuidv4 } from "uuid";
 import { IUserInfo } from "./interfaces/user.interface";
-import { IRoomCreated, IRoomJoined, ISocketResponse } from "./interfaces/response";
+import { IChatResponse, IRoomCreated, IRoomJoined, ISocketResponse } from "./interfaces/response";
 
 interface Env {
   ROOM_MANAGER: DurableObjectNamespace;
@@ -85,7 +85,6 @@ export class RoomManager {
           }
           //if we get room just add the client ws to that room
           room.set(server, { username: data.username, roomId: roomId });
-          console.log("active...", this.rooms)
           const response: ISocketResponse<IRoomJoined> = {
             type: "roomJoined",
             data: {
@@ -108,7 +107,54 @@ export class RoomManager {
               client.send(JSON.stringify(joinedMessage));
             }
           })
+        } else if (data.type == "chat") {
+          //broadcast the message
+          const roomId = data.room_id;
 
+          if (!roomId) {
+            const response: ISocketResponse<null> = {
+              type: "error",
+              data: null,
+              message: "You are not in a room.",
+            };
+            server.send(JSON.stringify(response));
+            return;
+          }
+          const room = this.rooms.get(roomId)
+          if (!room) {
+            const response: ISocketResponse<null> = {
+              type: "error",
+              data: null,
+              message: "Invalid Room Id.",
+              error: "Provide a valid Room Id."
+            }
+            server.send(JSON.stringify(response));
+            return;
+          }
+          if (!data.message) {
+            const response: ISocketResponse<null> = {
+              type: "error",
+              data: null,
+              message: "No message provided.",
+              error: "Message content is empty."
+            }
+            server.send(JSON.stringify(response));
+            return;
+          }
+
+          room.forEach((metadata, client) => {
+            if (client != server && client.readyState === WebSocket.OPEN) {
+              const chatResponse: ISocketResponse<IChatResponse> = {
+                type: "chat",
+                data: {
+                  message: data.message ?? "",
+                  sender: data.username
+                },
+                message: "New Message"
+              }
+              client.send(JSON.stringify(chatResponse));
+            }
+          })
         }
 
       } catch (error) {
