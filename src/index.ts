@@ -162,44 +162,10 @@ export class RoomManager {
       }
     });
 
-    server.addEventListener("close", () => {
-      // Remove connection from all rooms
-      for (const [roomId, clients] of this.rooms.entries()) {
-        if (clients.has(server)) {
-          const userData = clients.get(server);
-          clients.delete(server);
-
-          // Notify others that user left
-          if (userData) {
-            this.broadcastToRoom(roomId, {
-              type: "user_left",
-              username: userData.username,
-            });
-          }
-
-          // Clean up empty rooms
-          if (clients.size === 0) {
-            this.rooms.delete(roomId);
-          }
-        }
-      }
-    });
-
     return new Response(null, {
       status: 101,
       webSocket: client
     });
   }
 
-  private broadcastToRoom(roomId: string, message: any, excludeSocket?: WebSocket) {
-    const room = this.rooms.get(roomId);
-    if (!room) return;
-
-    const messageStr = JSON.stringify(message);
-    for (const [socket] of room.entries()) {
-      if (socket !== excludeSocket) {
-        socket.send(messageStr);
-      }
-    }
-  }
 }
