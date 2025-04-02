@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { v4 as uuidv4 } from "uuid";
 import { IUserInfo } from "./interfaces/user.interface";
-import { IRoomCreated, ISocketResponse } from "./interfaces/response";
+import { IRoomCreated, IRoomJoined, ISocketResponse } from "./interfaces/response";
 
 interface Env {
   ROOM_MANAGER: DurableObjectNamespace;
@@ -58,6 +58,41 @@ export class RoomManager {
             message: "Room Creation Sucessful"
           }
           console.log(this.rooms)
+          server.send(JSON.stringify(response));
+        } else if (data.type == "join") {
+          const roomId = data.room_id;
+
+          if (!roomId) {
+            const response: ISocketResponse<null> = {
+              type: "error",
+              data: null,
+              message: "No room Id Provided."
+            }
+            server.send(JSON.stringify(response));
+            return;
+          }
+          //try to search if roomId Exists or not
+          const room = this.rooms.get(roomId);
+          if (!room) {
+            const response: ISocketResponse<null> = {
+              type: "error",
+              data: null,
+              message: "Invalid Room Id.",
+              error: "Provide a valid Room Id."
+            }
+            server.send(JSON.stringify(response));
+            return;
+          }
+          //if we get room just add the client ws to that room
+          room.set(server, { username: data.username, roomId: roomId });
+          console.log("active...", this.rooms)
+          const response: ISocketResponse<IRoomJoined> = {
+            type: "roomJoined",
+            data: {
+              roomId: roomId
+            },
+            message: "Room Joined Successfully"
+          }
           server.send(JSON.stringify(response));
         }
 
