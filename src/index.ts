@@ -94,6 +94,21 @@ export class RoomManager {
             message: "Room Joined Successfully"
           }
           server.send(JSON.stringify(response));
+
+          //trying to broadcast
+          console.log("active...", this.rooms)
+
+          room.forEach((metadata, client) => {
+            if (client !== server && client.readyState === WebSocket.OPEN) {
+              const joinedMessage: ISocketResponse<{ username: string }> = {
+                type: "userJoined",
+                data: { username: data.username },
+                message: `${data.username} has joined the room`
+              };
+              client.send(JSON.stringify(joinedMessage));
+            }
+          })
+
         }
 
       } catch (error) {
