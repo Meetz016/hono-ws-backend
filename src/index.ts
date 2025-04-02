@@ -96,12 +96,12 @@ export class RoomManager {
 
           //trying to broadcast
           console.log("active...", this.rooms)
-
+          const allUsers: string[] = Array.from(room.values()).map((metadata, client) => metadata.username)
           room.forEach((metadata, client) => {
-            if (client !== server && client.readyState === WebSocket.OPEN) {
-              const joinedMessage: ISocketResponse<{ username: string }> = {
+            if (client.readyState === WebSocket.OPEN) {
+              const joinedMessage: ISocketResponse<{ username: string, allUsers: string[] }> = {
                 type: "userJoined",
-                data: { username: data.username },
+                data: { username: data.username, allUsers: allUsers },
                 message: `${data.username} has joined the room`
               };
               client.send(JSON.stringify(joinedMessage));
